@@ -137,20 +137,57 @@ pub fn clear_screan() {
     let _ = execute!(stdout, Clear(ClearType::All));
 }
 
-pub fn cleanup_terminal(score: u16, width: u16, height: u16) {
+pub fn cleanup_terminal(
+    score1: u16,
+    score2: u16,
+    width: u16,
+    height: u16,
+    players: u8,
+    winner: u16,
+) {
     let mut stdout = stdout();
-    let h1 = "thank you for playing!";
-    let h2 = format!("Your score: {}!", score);
 
-    let _ = execute!(
-        stdout,
-        cursor::MoveTo((width / 2) - (h1.len() as u16 / 2), (height / 2) - 1),
-        Print(h1),
-        cursor::MoveTo((width / 2) - (h2.len() as u16 / 2), (height / 2) + 1),
-        Print(h2),
-    );
+    if players == 1 {
+        let h1 = "thank you for playing!";
+        let h2 = format!("Your score: {}!", score1);
 
-    std::thread::sleep(std::time::Duration::from_secs(1));
+        let _ = execute!(
+            stdout,
+            cursor::MoveTo((width / 2) - (h1.len() as u16 / 2), (height / 2) - 1),
+            Print(h1),
+            cursor::MoveTo((width / 2) - (h2.len() as u16 / 2), (height / 2) + 1),
+            Print(h2),
+        );
+    }
+
+    if players == 2 {
+        let winner_msg: String = if winner == 1 {
+            format!("Player {} Won with {} points!", winner, score1)
+        } else {
+            format!("Player {} Won with {} points!", winner, score2)
+        };
+
+        let _ = execute!(
+            stdout,
+            cursor::MoveTo(
+                (width / 2) - (winner_msg.len() as u16 / 2),
+                (height / 2) - 1
+            ),
+            Print(winner_msg),
+        );
+    }
+
+    if players == 0 {
+        clear_screan();
+        let goodbey = "Sad to see you go";
+        let _ = execute!(
+            stdout,
+            cursor::MoveTo((width / 2) - (goodbey.len() as u16 / 2), (height / 2) - 1),
+            Print(goodbey),
+        );
+    }
+
+    std::thread::sleep(std::time::Duration::from_secs(2));
 
     let _ = execute!(
         stdout,

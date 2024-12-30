@@ -158,8 +158,15 @@ impl SnakeGame {
     }
 
     // wrapper func that resets the terminal to the state at which it was before the game
-    pub fn cleanup(self) {
-        tm_logic::cleanup_terminal(self.score, self.width, self.height);
+    pub fn cleanup(self, players: u8) {
+        tm_logic::cleanup_terminal(
+            self.score,
+            self.score2,
+            self.width,
+            self.height,
+            players,
+            self.winner,
+        );
     }
 
     // updates the location by poping the tail and prepending the head to the new location
@@ -384,9 +391,9 @@ impl Multiplayer for SnakeGame {
         let _ = execute!(
             stdout,
             cursor::MoveTo(0, 0),
-            Print(format!("Score: {}", self.score)),
+            Print(format!("P1: {}", self.score)),
             cursor::MoveTo(self.width - 20, 0),
-            Print(format!("Score: {}", self.score2))
+            Print(format!("P2: {}", self.score2))
         );
     }
 

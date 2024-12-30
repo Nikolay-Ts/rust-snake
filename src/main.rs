@@ -53,6 +53,6 @@ fn main() -> Result<(), std::io::Error> {
         }
     }
 
-    game.cleanup();
+    game.cleanup(game_mode.players);
     Ok(())
 }
