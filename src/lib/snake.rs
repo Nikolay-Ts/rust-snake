@@ -1,7 +1,7 @@
 use super::tm_logic;
 use crossterm::{
     cursor, execute,
-    style::{Print, SetBackgroundColor},
+    style::Print,
     terminal::{Clear, ClearType},
 };
 use rand::Rng;
@@ -46,7 +46,7 @@ pub struct SnakeGame {
 
 // single player
 impl SnakeGame {
-    pub fn new(width: u16, height: u16, players: u8) -> Self {
+    pub fn new(width: u16, height: u16) -> Self {
         let mut snake = VecDeque::new();
         snake.push_back(Point {
             x: width / 2,
@@ -66,31 +66,12 @@ impl SnakeGame {
             y: rand::thread_rng().gen_range(1..height - 1),
         };
 
-        let snake2 = if players == 2 {
-            let mut _snake2 = VecDeque::new();
-            _snake2.push_back(Point {
-                x: width / 2 - (width / 2),
-                y: height / 2,
-            });
-            _snake2.push_back(Point {
-                x: width / 2 + 1 - (width / 2),
-                y: height / 2,
-            });
-            _snake2.push_back(Point {
-                x: width / 2 + 2 - (width / 2),
-                y: height / 2,
-            });
-            Some(_snake2)
-        } else {
-            None
-        };
-
         Self {
             player1: snake,
-            player2: snake2,
+            player2: None,
             direction: Direction::Left,
             direction2: Direction::Left,
-            food,
+            food: food,
             score: 0,
             score2: 0,
             game_over: false,
@@ -267,12 +248,64 @@ impl SnakeGame {
 }
 
 pub trait Multiplayer {
+    fn multiplayer_new(width: u16, height: u16) -> Self;
     fn multiplayer_update(&mut self, border: bool);
     fn multiplayer_draw(&mut self);
     fn multiplayer_move_snake(&mut self, border: bool);
 }
 
 impl Multiplayer for SnakeGame {
+    fn multiplayer_new(width: u16, height: u16) -> Self {
+        let mut snake = VecDeque::new();
+        snake.push_back(Point {
+            x: width - 2,
+            y: height / 2,
+        });
+        snake.push_back(Point {
+            x: width - 1,
+            y: height / 2,
+        });
+        snake.push_back(Point {
+            x: width,
+            y: height / 2,
+        });
+
+        let new_food = Point {
+            x: rand::thread_rng().gen_range(1..width - 1),
+            y: rand::thread_rng().gen_range(1..height - 1),
+        };
+
+        let mut snake2 = VecDeque::new();
+        snake2.push_back(Point {
+            x: width / 2,
+            y: height / 2,
+        });
+        snake2.push_back(Point {
+            x: width / 2 + 1,
+            y: height / 2,
+        });
+        snake2.push_back(Point {
+            x: width / 2 + 2,
+            y: height / 2,
+        });
+
+        Self {
+            player1: snake,
+            player2: Some(snake2),
+            direction: Direction::Left,
+            direction2: Direction::Left,
+            food: new_food,
+            score: 0,
+            score2: 0,
+            game_over: false,
+            growing: false,
+            growing2: false,
+            winner: 0,
+            height: height,
+            width: width,
+        }
+    }
+
     fn multiplayer_update(&mut self, border: bool) {
         self.move_snake(border);
         self.multiplayer_move_snake(border);

@@ -6,7 +6,7 @@ use crossterm::{
     terminal,
     terminal::{Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen, SetSize},
 };
-use std::fmt::format;
+
 use std::io::stdout;
 
 pub struct GameMode {
