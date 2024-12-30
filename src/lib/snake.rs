@@ -253,6 +253,7 @@ pub trait Multiplayer {
     fn multiplayer_update(&mut self, border: bool);
     fn multiplayer_draw(&mut self);
     fn multiplayer_move_snake(&mut self, border: bool);
+    fn collision(&mut self);
 }
 
 impl Multiplayer for SnakeGame {
@@ -314,53 +315,7 @@ impl Multiplayer for SnakeGame {
         let snake2_head = self.player2.as_ref().unwrap()[0];
 
         // check for collision
-        if self
-            .player1
-            .iter()
-            .skip(1)
-            .any(|segment| *segment == snake1_head)
-            || self
-                .player2
-                .as_ref()
-                .unwrap()
-                .iter()
-                .skip(1)
-                .any(|segment| *segment == snake2_head)
-        {
-            self.game_over = true;
-            self.winner = if self
-                .player1
-                .iter()
-                .skip(1)
-                .any(|segment| *segment == snake1_head)
-            {
-                2
-            } else {
-                1
-            };
-        }
-
-        if self
-            .player2
-            .as_ref()
-            .unwrap()
-            .iter()
-            .any(|segment| *segment == snake1_head)
-            || self.player1.iter().any(|segment| *segment == snake2_head)
-        {
-            self.game_over = true;
-            self.winner = if self
-                .player2
-                .as_ref()
-                .unwrap()
-                .iter()
-                .any(|segment| *segment == snake1_head)
-            {
-                2
-            } else {
-                1
-            };
-        }
+        self.collision();
 
         // ate the apple
         if snake1_head == self.food {
@@ -505,6 +460,73 @@ impl Multiplayer for SnakeGame {
             self.player2.as_mut().unwrap().pop_back();
         } else {
             self.growing2 = false;
+        }
+    }
+
+    // returns true if the game is over, the snakes have collided
+    fn collision(&mut self) {
+        let snake1_head = self.player1[0];
+        let snake2_head = self.player2.as_ref().unwrap()[0];
+
+        // check for collision
+        if self
+            .player1
+            .iter()
+            .skip(1)
+            .any(|segment| *segment == snake1_head)
+            || self
+                .player2
+                .as_ref()
+                .unwrap()
+                .iter()
+                .skip(1)
+                .any(|segment| *segment == snake2_head)
+        {
+            self.game_over = true;
+            self.winner = if self
+                .player1
+                .iter()
+                .skip(1)
+                .any(|segment| *segment == snake1_head)
+            {
+                2
+            } else {
+                1
+            };
+        }
+
+        if self
+            .player2
+            .as_ref()
+            .unwrap()
+            .iter()
+            .any(|segment| *segment == snake1_head)
+            || self.player1.iter().any(|segment| *segment == snake2_head)
+        {
+            self.game_over = true;
+            self.winner = if self
+                .player2
+                .as_ref()
+                .unwrap()
+                .iter()
+                .any(|segment| *segment == snake1_head)
+            {
+                2
+            } else {
+                1
+            };
+        }
+
+        // they collide head on, so then the person with higher score wins
+        if snake1_head == snake2_head {
+            self.winner = if self.score > self.score2 {
+                1
+            } else if self.score > self.score2 {
+                2
+            } else {
+                // draw
+                3
+            }
         }
     }
 }

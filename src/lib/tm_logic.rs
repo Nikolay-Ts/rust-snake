@@ -208,8 +208,10 @@ pub fn cleanup_terminal(
     if players == 2 {
         let winner_msg: String = if winner == 1 {
             format!("Player {} Won with {} points!", winner, score1)
-        } else {
+        } else if winner == 2 {
             format!("Player {} Won with {} points!", winner, score2)
+        } else {
+            String::from("DRAW!")
         };
 
         let _ = execute!(
