@@ -191,3 +191,42 @@ pub fn handle_input(game: &mut snake::SnakeGame) -> bool {
     }
     true
 }
+
+pub fn multiplayer_handle_input(game: &mut snake::SnakeGame) -> bool {
+    if event::poll(std::time::Duration::from_millis(50)).unwrap() {
+        if let Event::Key(key_event) = event::read().unwrap() {
+            match key_event.code {
+                KeyCode::Up if game.direction != snake::Direction::Down => {
+                    game.direction = snake::Direction::Up;
+                }
+                KeyCode::Down if game.direction != snake::Direction::Up => {
+                    game.direction = snake::Direction::Down;
+                }
+                KeyCode::Left if game.direction != snake::Direction::Right => {
+                    game.direction = snake::Direction::Left;
+                }
+                KeyCode::Right if game.direction != snake::Direction::Left => {
+                    game.direction = snake::Direction::Right;
+                }
+                KeyCode::Char('w') if game.direction2 != snake::Direction::Down => {
+                    game.direction2 = snake::Direction::Up;
+                }
+                KeyCode::Char('s') if game.direction2 != snake::Direction::Up => {
+                    game.direction2 = snake::Direction::Down;
+                }
+                KeyCode::Char('a') if game.direction2 != snake::Direction::Right => {
+                    game.direction2 = snake::Direction::Left;
+                }
+                KeyCode::Char('d') if game.direction2 != snake::Direction::Left => {
+                    game.direction2 = snake::Direction::Right;
+                }
+                KeyCode::Char('q') => {
+                    println!("Exiting...");
+                    return false;
+                }
+                _ => {}
+            }
+        }
+    }
+    true
+}

@@ -1,7 +1,7 @@
 use super::tm_logic;
 use crossterm::{
     cursor, execute,
-    style::Print,
+    style::{Print, SetBackgroundColor},
     terminal::{Clear, ClearType},
 };
 use rand::Rng;
@@ -32,18 +32,21 @@ pub struct SnakeGame {
     player1: VecDeque<Point>,
     player2: Option<VecDeque<Point>>,
     pub direction: Direction,
-    pub direction2: Option<Direction>,
-    pub game_over: bool,
-    score: u16,
+    pub direction2: Direction,
     growing: bool,
+    growing2: bool,
     food: Point,
     height: u16,
     width: u16,
+    score: u16,
+    score2: u16,
+    pub winner: u16,
+    pub game_over: bool,
 }
 
 // single player
 impl SnakeGame {
-    pub fn new(width: u16, height: u16) -> Self {
+    pub fn new(width: u16, height: u16, players: u8) -> Self {
         let mut snake = VecDeque::new();
         snake.push_back(Point {
             x: width / 2,
@@ -63,15 +66,37 @@ impl SnakeGame {
             y: rand::thread_rng().gen_range(1..height - 1),
         };
 
+        let snake2 = if players == 2 {
+            let mut _snake2 = VecDeque::new();
+            _snake2.push_back(Point {
+                x: width / 2 - (width / 2),
+                y: height / 2,
+            });
+            _snake2.push_back(Point {
+                x: width / 2 + 1 - (width / 2),
+                y: height / 2,
+            });
+            _snake2.push_back(Point {
+                x: width / 2 + 2 - (width / 2),
+                y: height / 2,
+            });
+            Some(_snake2)
+        } else {
+            None
+        };
+
         Self {
             player1: snake,
-            player2: None,
+            player2: snake2,
             direction: Direction::Left,
-            direction2: None,
+            direction2: Direction::Left,
             food,
             score: 0,
+            score2: 0,
             game_over: false,
             growing: false,
+            growing2: false,
+            winner: 0,
             height: height,
             width: width,
         }
@@ -235,6 +260,210 @@ impl SnakeGame {
 }
 
 pub trait Multiplayer {
-    fn multiplayer_new() -> Self;
     fn multiplayer_update(&mut self, border: bool);
+    fn multiplayer_draw(&mut self);
+    fn multiplayer_move_snake(&mut self, border: bool);
+}
+
+impl Multiplayer for SnakeGame {
+    fn multiplayer_update(&mut self, border: bool) {
+        self.move_snake(border);
+        self.multiplayer_move_snake(border);
+        let snake1_head = self.player1[0];
+        let snake2_head = self.player2.as_ref().unwrap()[0];
+
+        // check for collision
+        if self
+            .player1
+            .iter()
+            .skip(1)
+            .any(|segment| *segment == snake1_head)
+            || self
+                .player2
+                .as_ref()
+                .unwrap()
+                .iter()
+                .skip(1)
+                .any(|segment| *segment == snake2_head)
+        {
+            self.game_over = true;
+            self.winner = if self
+                .player1
+                .iter()
+                .skip(1)
+                .any(|segment| *segment == snake1_head)
+            {
+                2
+            } else {
+                1
+            };
+        }
+
+        if self
+            .player2
+            .as_ref()
+            .unwrap()
+            .iter()
+            .any(|segment| *segment == snake1_head)
+            || self.player1.iter().any(|segment| *segment == snake2_head)
+        {
+            self.game_over = true;
+            self.winner = if self
+                .player2
+                .as_ref()
+                .unwrap()
+                .iter()
+                .any(|segment| *segment == snake1_head)
+            {
+                2
+            } else {
+                1
+            };
+        }
+
+        // ate the apple
+        if snake1_head == self.food {
+            self.score += 1;
+            let last = self.player1.back().unwrap(); // this should never be None
+            self.player1.push_back(Point {
+                x: last.x + 1,
+                y: last.y,
+            });
+
+            self.growing = true;
+            self.gen_fruit();
+        }
+
+        if snake2_head == self.food {
+            self.score2 += 1;
+            let player2 = self.player2.as_mut().unwrap();
+            let last = player2.back().unwrap(); // this should never be None
+            player2.push_back(Point {
+                x: last.x + 1,
+                y: last.y,
+            });
+
+            self.growing2 = true;
+            self.gen_fruit();
+        }
+
+        if self.score == self.width * self.height || self.score2 == self.width * self.height {
+            self.game_over = true;
+        }
+    }
+
+    fn multiplayer_draw(&mut self) {
+        let mut stdout = stdout();
+
+        let _ = execute!(stdout, Clear(ClearType::All));
+
+        for (i, segment) in self.player1.iter().enumerate() {
+            if i == 0 {
+                // head
+                let _ = execute!(stdout, cursor::MoveTo(segment.x, segment.y), Print("*"));
+            } else {
+                let _ = execute!(stdout, cursor::MoveTo(segment.x, segment.y), Print("o"));
+            }
+        }
+
+        if let Some(player2) = &self.player2 {
+            for (i, segment) in player2.iter().enumerate() {
+                if i == 0 {
+                    // head
+                    let _ = execute!(stdout, cursor::MoveTo(segment.x, segment.y), Print("$"));
+                } else {
+                    let _ = execute!(stdout, cursor::MoveTo(segment.x, segment.y), Print("o"));
+                }
+            }
+        }
+
+        // draw the food
+        let _ = execute!(stdout, cursor::MoveTo(self.food.x, self.food.y), Print("a"));
+
+        // score
+        let _ = execute!(
+            stdout,
+            cursor::MoveTo(0, 0),
+            Print(format!("Score: {}", self.score)),
+            cursor::MoveTo(self.width - 20, 0),
+            Print(format!("Score: {}", self.score2))
+        );
+    }
+
+    fn multiplayer_move_snake(&mut self, border: bool) {
+        let new_head = {
+            let head = self.player2.as_mut().unwrap().front().unwrap();
+            match self.direction2 {
+                Direction::Up => {
+                    if border && head.y == 0 {
+                        self.game_over = true;
+                        head.clone()
+                    } else {
+                        Point {
+                            x: head.x,
+                            y: if border {
+                                head.y - 1
+                            } else {
+                                (head.y + self.height - 1) % self.height
+                            },
+                        }
+                    }
+                }
+                Direction::Down => {
+                    if border && head.y == self.height - 1 {
+                        self.game_over = true;
+                        head.clone()
+                    } else {
+                        Point {
+                            x: head.x,
+                            y: if border {
+                                head.y + 1
+                            } else {
+                                (head.y + 1) % self.height
+                            },
+                        }
+                    }
+                }
+                Direction::Left => {
+                    if border && head.x == 0 {
+                        self.game_over = true;
+                        head.clone()
+                    } else {
+                        Point {
+                            x: if border {
+                                head.x - 1
+                            } else {
+                                (head.x + self.width - 1) % self.width
+                            },
+                            y: head.y,
+                        }
+                    }
+                }
+                Direction::Right => {
+                    if border && head.x == self.width - 1 {
+                        self.game_over = true;
+                        head.clone()
+                    } else {
+                        Point {
+                            x: if border {
+                                head.x + 1
+                            } else {
+                                (head.x + 1) % self.width
+                            },
+                            y: head.y,
+                        }
+                    }
+                }
+            }
+        };
+
+        // prepend the new head
+        self.player2.as_mut().unwrap().push_front(new_head);
+
+        if !self.growing2 {
+            self.player2.as_mut().unwrap().pop_back();
+        } else {
+            self.growing2 = false;
+        }
+    }
 }
