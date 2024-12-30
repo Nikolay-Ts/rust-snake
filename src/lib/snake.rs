@@ -29,8 +29,10 @@ impl PartialEq for Point {
 }
 
 pub struct SnakeGame {
-    snake: VecDeque<Point>,
+    player1: VecDeque<Point>,
+    player2: Option<VecDeque<Point>>,
     pub direction: Direction,
+    pub direction2: Option<Direction>,
     pub game_over: bool,
     score: u16,
     growing: bool,
@@ -41,9 +43,7 @@ pub struct SnakeGame {
 
 // single player
 impl SnakeGame {
-    pub fn init() -> Self {
-        let (width, height) = tm_logic::init_terminal();
-
+    pub fn new(width: u16, height: u16) -> Self {
         let mut snake = VecDeque::new();
         snake.push_back(Point {
             x: width / 2,
@@ -64,8 +64,10 @@ impl SnakeGame {
         };
 
         Self {
-            snake,
+            player1: snake,
+            player2: None,
             direction: Direction::Left,
+            direction2: None,
             food,
             score: 0,
             game_over: false,
@@ -77,18 +79,18 @@ impl SnakeGame {
 
     // updates the location
     // checks for collision and if the snake ate food
-    pub fn update(&mut self) {
-        self.move_snake();
-        let head = self.snake[0];
+    pub fn update(&mut self, border: bool) {
+        self.move_snake(border);
+        let head = self.player1[0];
 
         // check for collision
-        self.game_over = self.snake.iter().skip(1).any(|segment| *segment == head);
+        self.game_over = self.player1.iter().skip(1).any(|segment| *segment == head);
 
         // ate the apple
         if head == self.food {
             self.score += 1;
-            let last = self.snake.back().unwrap(); // this should never be None
-            self.snake.push_back(Point {
+            let last = self.player1.back().unwrap(); // this should never be None
+            self.player1.push_back(Point {
                 x: last.x + 1,
                 y: last.y,
             });
@@ -105,12 +107,12 @@ impl SnakeGame {
     // draws it based on the coordinates
     // all coordinates are positive
     // head is drawn using a star
-    pub fn draw(&self) {
+    pub fn draw(&self /*_score: Point*/) {
         let mut stdout = stdout();
 
         let _ = execute!(stdout, Clear(ClearType::All));
 
-        for (i, segment) in self.snake.iter().enumerate() {
+        for (i, segment) in self.player1.iter().enumerate() {
             if i == 0 {
                 // head
                 let _ = execute!(stdout, cursor::MoveTo(segment.x, segment.y), Print("*"));
@@ -136,37 +138,82 @@ impl SnakeGame {
     }
 
     // updates the location by poping the tail and prepending the head to the new location
-    fn move_snake(&mut self) {
+    // also depending on the gamemode checks if the head has collided with the wall
+    // if there are no walls % width / height to teleport the snake to the opposite side of screen
+    fn move_snake(&mut self, border: bool) {
         let new_head = {
-            let head = self.snake.front().unwrap();
+            let head = self.player1.front().unwrap();
             match self.direction {
-                Direction::Up => Point {
-                    x: head.x,
-                    y: (head.y + self.height - 1) % self.height,
-                },
-                Direction::Down => Point {
-                    x: head.x,
-                    y: (head.y + 1) % self.height,
-                },
-                Direction::Left => Point {
-                    x: (head.x + self.width - 1) % self.width,
-                    y: head.y,
-                },
-                Direction::Right => Point {
-                    x: (head.x + 1) % self.width,
-                    y: head.y,
-                },
+                Direction::Up => {
+                    if border && head.y == 0 {
+                        self.game_over = true;
+                        head.clone()
+                    } else {
+                        Point {
+                            x: head.x,
+                            y: if border {
+                                head.y - 1
+                            } else {
+                                (head.y + self.height - 1) % self.height
+                            },
+                        }
+                    }
+                }
+                Direction::Down => {
+                    if border && head.y == self.height - 1 {
+                        self.game_over = true;
+                        head.clone()
+                    } else {
+                        Point {
+                            x: head.x,
+                            y: if border {
+                                head.y + 1
+                            } else {
+                                (head.y + 1) % self.height
+                            },
+                        }
+                    }
+                }
+                Direction::Left => {
+                    if border && head.x == 0 {
+                        self.game_over = true;
+                        head.clone()
+                    } else {
+                        Point {
+                            x: if border {
+                                head.x - 1
+                            } else {
+                                (head.x + self.width - 1) % self.width
+                            },
+                            y: head.y,
+                        }
+                    }
+                }
+                Direction::Right => {
+                    if border && head.x == self.width - 1 {
+                        self.game_over = true;
+                        head.clone()
+                    } else {
+                        Point {
+                            x: if border {
+                                head.x + 1
+                            } else {
+                                (head.x + 1) % self.width
+                            },
+                            y: head.y,
+                        }
+                    }
+                }
             }
         };
 
-        // Insert the new head at the front
-        self.snake.push_front(new_head);
+        // prepend the new head
+        self.player1.push_front(new_head);
 
-        // Remove the tail unless the snake is growing
         if !self.growing {
-            self.snake.pop_back();
+            self.player1.pop_back();
         } else {
-            self.growing = false; // Reset growth flag
+            self.growing = false;
         }
     }
 
@@ -177,7 +224,7 @@ impl SnakeGame {
         self.food.y = rand::thread_rng().gen_range(1..self.height - 1);
 
         if self
-            .snake
+            .player1
             .iter()
             .skip(1)
             .any(|segment| *segment == self.food)
@@ -185,4 +232,9 @@ impl SnakeGame {
             self.gen_fruit();
         }
     }
+}
+
+pub trait Multiplayer {
+    fn multiplayer_new() -> Self;
+    fn multiplayer_update(&mut self, border: bool);
 }
