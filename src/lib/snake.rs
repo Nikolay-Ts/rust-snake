@@ -15,6 +15,7 @@ pub enum Direction {
     Left,
     Right,
 }
+
 #[derive(Clone, Copy)]
 pub struct Point {
     pub x: u16,

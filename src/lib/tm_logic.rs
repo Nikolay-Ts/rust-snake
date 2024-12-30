@@ -11,6 +11,7 @@ use std::io::stdout;
 
 pub struct GameMode {
     pub players: u8,
+    pub speed_ms: u64,
     pub borders: bool,
 }
 
@@ -18,6 +19,7 @@ impl GameMode {
     pub fn new() -> Self {
         GameMode {
             players: 1,
+            speed_ms: 50,
             borders: false,
         }
     }
@@ -51,7 +53,7 @@ impl GameMode {
                         }
                         KeyCode::Char('q') | KeyCode::Char('Q') => {
                             self.players = 0;
-                            break;
+                            return;
                         }
                         _ => {}
                     }
@@ -83,9 +85,52 @@ impl GameMode {
                             self.borders = true;
                             break;
                         }
-                        KeyCode::Char('q') | KeyCode::Char('Q') => {
+                        KeyCode::Char('q' | 'Q') => {
                             self.players = 0;
+                            return;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+
+        let slow = "Press 1 for no slow";
+        let med = "Press 2 for medium";
+        let fast = "Press 3 for fast";
+
+        let _ = execute!(
+            stdout,
+            Clear(ClearType::All),
+            cursor::MoveTo((width / 2) - (slow.len() as u16 / 2), (height / 2) - 1),
+            Print(slow),
+            cursor::MoveTo((width / 2) - (med.len() as u16 / 2), (height / 2) + 1),
+            Print(med),
+            cursor::MoveTo((width / 2) - (fast.len() as u16 / 2), (height / 2) + 2),
+            Print(fast),
+        );
+
+        loop {
+            if event::poll(std::time::Duration::from_millis(100)).unwrap() {
+                if let Event::Key(key_event) = event::read().unwrap() {
+                    match key_event.code {
+                        KeyCode::Char('1') => {
+                            self.speed_ms = 100;
                             break;
+                        }
+                        KeyCode::Char('2') => {
+                            self.speed_ms = 50;
+                            break;
+                        }
+
+                        KeyCode::Char('3') => {
+                            self.speed_ms = 30;
+                            break;
+                        }
+
+                        KeyCode::Char('q' | 'Q') => {
+                            self.players = 0;
+                            return;
                         }
                         _ => {}
                     }
@@ -98,7 +143,7 @@ impl GameMode {
 // hides cursros and sets temrinal to Raw for better user handling
 pub fn init_terminal() -> (u16, u16) {
     match terminal::enable_raw_mode() {
-        Ok(_) => {}
+        Ok(()) => {}
         Err(e) => panic!("Could not init raw mode because: {}", e),
     }
 
@@ -218,7 +263,7 @@ pub fn handle_input(game: &mut snake::SnakeGame) -> bool {
                 KeyCode::Right if game.direction != snake::Direction::Left => {
                     game.direction = snake::Direction::Right;
                 }
-                KeyCode::Char('q') => {
+                KeyCode::Char('q' | 'Q') => {
                     println!("Exiting...");
                     return false;
                 }
@@ -257,7 +302,7 @@ pub fn multiplayer_handle_input(game: &mut snake::SnakeGame) -> bool {
                 KeyCode::Char('d') if game.direction2 != snake::Direction::Left => {
                     game.direction2 = snake::Direction::Right;
                 }
-                KeyCode::Char('q') => {
+                KeyCode::Char('q' | 'Q') => {
                     println!("Exiting...");
                     return false;
                 }

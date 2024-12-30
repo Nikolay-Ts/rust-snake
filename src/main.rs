@@ -2,17 +2,17 @@ mod lib;
 use lib::{
     snake::Multiplayer,
     tm_logic::{self, handle_input, multiplayer_handle_input},
+    {snake::SnakeGame, tm_logic::GameMode},
 };
-use lib::{snake::SnakeGame, tm_logic::GameMode};
 
-fn main() -> Result<(), std::io::Error> {
+fn main() {
     let (width, height) = tm_logic::init_terminal();
     let mut game_mode = GameMode::new();
 
     // for consistent refresh rate
-    let frame_duration = std::time::Duration::from_millis(50);
 
     game_mode.welcome_screen(width, height);
+    let frame_duration = std::time::Duration::from_millis(game_mode.speed_ms);
 
     if game_mode.players == 1 {
         let mut game = SnakeGame::new(width, height);
@@ -49,6 +49,4 @@ fn main() -> Result<(), std::io::Error> {
         }
         game.cleanup(game_mode.players);
     }
-
-    Ok(())
 }
