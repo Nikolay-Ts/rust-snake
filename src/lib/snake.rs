@@ -39,6 +39,7 @@ pub struct SnakeGame {
     width: u16,
 }
 
+// single player
 impl SnakeGame {
     pub fn init() -> Self {
         let (width, height) = tm_logic::init_terminal();
@@ -94,6 +95,10 @@ impl SnakeGame {
 
             self.growing = true;
             self.gen_fruit();
+        }
+
+        if self.score == self.width * self.height {
+            self.game_over = true;
         }
     }
 
@@ -166,8 +171,18 @@ impl SnakeGame {
     }
 
     // random x y for the fruit
+    // recursivley called if the food is spawned in the snake thats not the head
     fn gen_fruit(&mut self) {
         self.food.x = rand::thread_rng().gen_range(1..self.width - 1);
         self.food.y = rand::thread_rng().gen_range(1..self.height - 1);
+
+        if self
+            .snake
+            .iter()
+            .skip(1)
+            .any(|segment| *segment == self.food)
+        {
+            self.gen_fruit();
+        }
     }
 }

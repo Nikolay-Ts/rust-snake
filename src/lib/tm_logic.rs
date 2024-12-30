@@ -66,6 +66,8 @@ pub fn cleanup_terminal(score: u16, width: u16, height: u16) {
         LeaveAlternateScreen,
         cursor::Show
     );
+
+    let _ = terminal::disable_raw_mode();
 }
 
 // non blocking event func that converts arrows to Direction Enum
