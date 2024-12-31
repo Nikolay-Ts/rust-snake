@@ -36,7 +36,7 @@ pub struct SnakeGame {
     pub direction2: Direction,
     growing: bool,
     growing2: bool,
-    food: Point,
+    fruits: [Point; 5], // this is for multiplayer, single player only has one fruit
     height: u16,
     width: u16,
     score: u16,
@@ -62,17 +62,19 @@ impl SnakeGame {
             y: height / 2,
         });
 
-        let food = Point {
+        let fruit: Point = Point {
             x: rand::thread_rng().gen_range(1..width - 1),
             y: rand::thread_rng().gen_range(1..height - 1),
         };
+
+        let fruits: [Point; 5] = [fruit; 5];
 
         Self {
             player1: snake,
             player2: None,
             direction: Direction::Left,
             direction2: Direction::Left,
-            food: food,
+            fruits: fruits,
             score: 0,
             score2: 0,
             game_over: false,
@@ -94,7 +96,7 @@ impl SnakeGame {
         self.game_over = self.player1.iter().skip(1).any(|segment| *segment == head);
 
         // ate the apple
-        if head == self.food {
+        if self.fruits[0] == head {
             self.score += 1;
             let last = self.player1.back().unwrap(); // this should never be None
             self.player1.push_back(Point {
@@ -129,7 +131,11 @@ impl SnakeGame {
         }
 
         // draw the food
-        let _ = execute!(stdout, cursor::MoveTo(self.food.x, self.food.y), Print("a"));
+        let _ = execute!(
+            stdout,
+            cursor::MoveTo(self.fruits[0].x, self.fruits[0].y),
+            Print("a")
+        );
 
         // score
         let _ = execute!(
@@ -234,14 +240,16 @@ impl SnakeGame {
     // random x y for the fruit
     // recursivley called if the food is spawned in the snake thats not the head
     fn gen_fruit(&mut self) {
-        self.food.x = rand::thread_rng().gen_range(1..self.width - 1);
-        self.food.y = rand::thread_rng().gen_range(1..self.height - 1);
+        self.fruits[0] = Point {
+            x: rand::thread_rng().gen_range(1..self.width - 1),
+            y: rand::thread_rng().gen_range(1..self.height - 1),
+        };
 
         if self
             .player1
             .iter()
             .skip(1)
-            .any(|segment| *segment == self.food)
+            .any(|segment| *segment == self.fruits[0])
         {
             self.gen_fruit();
         }
@@ -254,6 +262,7 @@ pub trait Multiplayer {
     fn multiplayer_draw(&mut self);
     fn multiplayer_move_snake(&mut self, border: bool);
     fn collision(&mut self);
+    fn gen_fruits(&mut self, index: usize);
 }
 
 impl Multiplayer for SnakeGame {
@@ -272,10 +281,13 @@ impl Multiplayer for SnakeGame {
             y: height / 2,
         });
 
-        let new_food = Point {
-            x: rand::thread_rng().gen_range(1..width - 1),
-            y: rand::thread_rng().gen_range(1..height - 1),
-        };
+        let mut fruits = [Point { x: 0, y: 0 }; 5];
+        for fruit in &mut fruits {
+            *fruit = Point {
+                x: rand::thread_rng().gen_range(1..width - 1),
+                y: rand::thread_rng().gen_range(1..height - 1),
+            };
+        }
 
         let mut snake2 = VecDeque::new();
         snake2.push_back(Point {
@@ -296,7 +308,7 @@ impl Multiplayer for SnakeGame {
             player2: Some(snake2),
             direction: Direction::Left,
             direction2: Direction::Left,
-            food: new_food,
+            fruits,
             score: 0,
             score2: 0,
             game_over: false,
@@ -318,29 +330,35 @@ impl Multiplayer for SnakeGame {
         self.collision();
 
         // ate the apple
-        if snake1_head == self.food {
-            self.score += 1;
-            let last = self.player1.back().unwrap(); // this should never be None
-            self.player1.push_back(Point {
-                x: last.x + 1,
-                y: last.y,
-            });
+        for (index, fruit) in self.fruits.iter().enumerate() {
+            if snake1_head == *fruit {
+                self.score += 1;
+                let last = self.player1.back().unwrap(); // this should never be None
+                self.player1.push_back(Point {
+                    x: last.x + 1,
+                    y: last.y,
+                });
 
-            self.growing = true;
-            self.gen_fruit();
+                self.growing = true;
+                self.gen_fruits(index);
+                break;
+            }
         }
 
-        if snake2_head == self.food {
-            self.score2 += 1;
-            let player2 = self.player2.as_mut().unwrap();
-            let last = player2.back().unwrap(); // this should never be None
-            player2.push_back(Point {
-                x: last.x + 1,
-                y: last.y,
-            });
+        for (index, fruit) in self.fruits.iter().enumerate() {
+            if snake2_head == *fruit {
+                self.score2 += 1;
+                let player2 = self.player2.as_mut().unwrap();
+                let last = player2.back().unwrap(); // this should never be None
+                player2.push_back(Point {
+                    x: last.x + 1,
+                    y: last.y,
+                });
 
-            self.growing2 = true;
-            self.gen_fruit();
+                self.growing2 = true;
+                self.gen_fruits(index);
+                break;
+            }
         }
 
         if self.score == self.width * self.height || self.score2 == self.width * self.height {
@@ -374,7 +392,9 @@ impl Multiplayer for SnakeGame {
         }
 
         // draw the food
-        let _ = execute!(stdout, cursor::MoveTo(self.food.x, self.food.y), Print("a"));
+        for fruit in self.fruits {
+            let _ = execute!(stdout, cursor::MoveTo(fruit.x, fruit.y), Print("a"));
+        }
 
         // score
         let _ = execute!(
@@ -526,6 +546,26 @@ impl Multiplayer for SnakeGame {
             } else {
                 // draw
                 3
+            }
+        }
+    }
+
+    // same as gen fruit but make instead pass the index of the fruit that has
+    // been eating by p1/p2
+    fn gen_fruits(&mut self, index: usize) {
+        loop {
+            let new_fruit = Point {
+                x: rand::thread_rng().gen_range(1..self.width - 1),
+                y: rand::thread_rng().gen_range(1..self.height - 1),
+            };
+
+            if !self.player1.iter().any(|segment| *segment == new_fruit)
+                && self.player2.as_ref().map_or(true, |player2| {
+                    !player2.iter().any(|segment| *segment == new_fruit)
+                })
+            {
+                self.fruits[index] = new_fruit;
+                break;
             }
         }
     }

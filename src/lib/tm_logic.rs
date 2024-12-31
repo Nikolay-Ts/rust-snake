@@ -106,7 +106,7 @@ impl GameMode {
             Print(slow),
             cursor::MoveTo((width / 2) - (med.len() as u16 / 2), (height / 2) + 1),
             Print(med),
-            cursor::MoveTo((width / 2) - (fast.len() as u16 / 2), (height / 2) + 2),
+            cursor::MoveTo((width / 2) - (fast.len() as u16 / 2), (height / 2) + 3),
             Print(fast),
         );
 
