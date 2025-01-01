@@ -320,6 +320,7 @@ impl Multiplayer for SnakeGame {
         }
     }
 
+    // Note: pressing q is considered a draw
     fn multiplayer_update(&mut self, border: bool) {
         self.move_snake(border);
         self.multiplayer_move_snake(border);
@@ -483,12 +484,14 @@ impl Multiplayer for SnakeGame {
         }
     }
 
-    // returns true if the game is over, the snakes have collided
+    // checks if the snakes have collided to the others body and set game_over to true
+    // and winner to 1 2 or 3
+    // if both snakes collide head on p1.head == p2.head the player with more apples eaten wins
+    // if the apples eating equal, then its a draw
     fn collision(&mut self) {
         let snake1_head = self.player1[0];
         let snake2_head = self.player2.as_ref().unwrap()[0];
 
-        // check for collision
         if self
             .player1
             .iter()
